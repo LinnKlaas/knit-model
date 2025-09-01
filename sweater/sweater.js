@@ -1,3 +1,4 @@
+// sweater.js
 import * as THREE from "https://esm.sh/three@0.160.0";
 import { GLTFLoader } from "https://esm.sh/three@0.160.0/examples/jsm/loaders/GLTFLoader.js";
 import { OrbitControls } from "https://esm.sh/three@0.160.0/examples/jsm/controls/OrbitControls.js";
@@ -8,27 +9,27 @@ import { OrbitControls } from "https://esm.sh/three@0.160.0/examples/jsm/control
  */
 export function initSweater(containerId) {
   // Groups for body, sleeves, collar
-  let bodyGroups = [];
-  let sleeveGroups = [];
-  let collarGroups = [];
+  const bodyGroups = [];
+  const sleeveGroups = [];
+  const collarGroups = [];
 
-  let bodyMaterial, sleeveMaterial, collarMaterial;
-  let sweaterContainer;
+  let bodyMaterial, sleeveMaterial, sweaterContainer;
 
   // Scene setup
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(
     60,
-    innerWidth / innerHeight,
+    1, // wird später angepasst
     0.1,
     1000
   );
   const renderer = new THREE.WebGLRenderer({ antialias: true });
-
   const containerEl = document.getElementById(containerId);
-  renderer.setSize(innerWidth - 250, innerHeight);
   renderer.setClearColor(0xffffff);
+  renderer.setSize(containerEl.clientWidth, containerEl.clientHeight);
   containerEl.appendChild(renderer.domElement);
+  camera.aspect = containerEl.clientWidth / containerEl.clientHeight;
+  camera.updateProjectionMatrix();
 
   // Lights
   scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1));
@@ -47,11 +48,9 @@ export function initSweater(containerId) {
     mesh.geometry.computeBoundingBox();
     const bbox = mesh.geometry.boundingBox;
     const shift = new THREE.Vector3();
-
     if (align === "top") shift.y = -bbox.max.y;
     else if (align === "bottom") shift.y = -bbox.min.y;
     else shift.y = -(bbox.min.y + bbox.max.y) / 2;
-
     mesh.geometry.translate(0, shift.y, 0);
   }
 
@@ -63,7 +62,6 @@ export function initSweater(containerId) {
   const knitNormal = texLoader.load(
     "https://raw.githubusercontent.com/LinnKlaas/knit-model/main/sweater/textures/Mat_0_normal.png"
   );
-
   [knitDiffuse, knitNormal].forEach((tx) => {
     tx.wrapS = tx.wrapT = THREE.RepeatWrapping;
     tx.repeat.set(20, 20);
@@ -84,7 +82,6 @@ export function initSweater(containerId) {
         roughness: 0.9,
         side: THREE.DoubleSide,
       });
-
       sleeveMaterial = new THREE.MeshStandardMaterial({
         map: knitDiffuse.clone(),
         normalMap: knitNormal,
@@ -93,11 +90,8 @@ export function initSweater(containerId) {
         side: THREE.DoubleSide,
       });
       sleeveMaterial.map.center.set(0.5, 0.5);
-      sleeveMaterial.map.rotation = Math.PI / 2; // rotate pattern on sleeves
+      sleeveMaterial.map.rotation = Math.PI / 2; // Rotate pattern on sleeves
 
-      collarMaterial = bodyMaterial; // collar uses same material
-
-      // Container for all parts
       sweaterContainer = new THREE.Group();
 
       // Body parts
@@ -105,14 +99,13 @@ export function initSweater(containerId) {
         const part = model.getObjectByName(
           `Design_Piece_mat_${id}_Outside_Mat_0_0`
         );
-        if (part) {
-          repivot(part, "top");
-          part.material = bodyMaterial;
-          const group = new THREE.Group();
-          group.add(part);
-          sweaterContainer.add(group);
-          bodyGroups.push(group);
-        }
+        if (!part) return;
+        repivot(part, "top");
+        part.material = bodyMaterial;
+        const group = new THREE.Group();
+        group.add(part);
+        sweaterContainer.add(group);
+        bodyGroups.push(group);
       });
 
       // Sleeves
@@ -120,15 +113,14 @@ export function initSweater(containerId) {
         const part = model.getObjectByName(
           `Design_Piece_mat_${id}_Outside_Mat_0_0`
         );
-        if (part) {
-          repivot(part, "top");
-          part.material = sleeveMaterial;
-          const group = new THREE.Group();
-          group.add(part);
-          group.userData.side = idx ? -1 : 1; // left / right
-          sweaterContainer.add(group);
-          sleeveGroups.push(group);
-        }
+        if (!part) return;
+        repivot(part, "top");
+        part.material = sleeveMaterial;
+        const group = new THREE.Group();
+        group.add(part);
+        group.userData.side = idx ? -1 : 1;
+        sweaterContainer.add(group);
+        sleeveGroups.push(group);
       });
 
       // Collars
@@ -136,32 +128,29 @@ export function initSweater(containerId) {
         const part = model.getObjectByName(
           `Design_Piece_mat_${id}_Outside_Mat_0_0`
         );
-        if (part) {
-          repivot(part, "bottom");
-          part.material = collarMaterial;
-          const group = new THREE.Group();
-          group.add(part);
-          sweaterContainer.add(group);
-          collarGroups.push(group);
-        }
+        if (!part) return;
+        repivot(part, "bottom");
+        part.material = bodyMaterial; // same material as body
+        const group = new THREE.Group();
+        group.add(part);
+        sweaterContainer.add(group);
+        collarGroups.push(group);
       });
-
       const extraCollar = model.getObjectByName(
         "Design_Piece_mat_1_Outside_Mat_0_0"
       );
       if (extraCollar) {
         repivot(extraCollar, "top");
-        extraCollar.material = collarMaterial;
+        extraCollar.material = bodyMaterial;
         const group = new THREE.Group();
         group.add(extraCollar);
         sweaterContainer.add(group);
         collarGroups.splice(1, 0, group);
       }
 
-      // Add to scene
       scene.add(sweaterContainer);
 
-      // Center and fit camera
+      // Center model
       const bbox = new THREE.Box3().setFromObject(sweaterContainer);
       const center = bbox.getCenter(new THREE.Vector3());
       sweaterContainer.position.sub(center);
@@ -177,7 +166,7 @@ export function initSweater(containerId) {
     }
   );
 
-  // Update scales and colors from UI sliders
+  // Update from sliders
   function updateFromUI() {
     const bw = +bodyW.value,
       bh = +bodyH.value,
@@ -189,7 +178,7 @@ export function initSweater(containerId) {
     // Body
     bodyGroups.forEach((g) => g.scale.set(bw, bh, 1));
 
-    // Get top Y for positioning sleeves + collar
+    // Get top Y
     let bbox = new THREE.Box3();
     bodyGroups.forEach((g) => bbox.union(new THREE.Box3().setFromObject(g)));
     const topY = bbox.max.y;
@@ -221,7 +210,7 @@ export function initSweater(containerId) {
     if (bodyMaterial) bodyMaterial.color.set(color.value);
     if (sleeveMaterial) sleeveMaterial.color.set(color.value);
   }
-  // Animation loop
+
   (function animate() {
     requestAnimationFrame(animate);
     updateFromUI();
