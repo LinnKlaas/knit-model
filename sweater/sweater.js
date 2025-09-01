@@ -55,7 +55,7 @@ export function initSweater(containerId) {
     const c = new THREE.Vector3();
     box.getCenter(c);
     sweaterContainer.position.sub(c);
-    sweaterContainer.position.y+=11;
+    sweaterContainer.position.y += 11;
     const size=box.getSize(new THREE.Vector3());
     const dist=Math.max(size.x,size.y,size.z)/(2*Math.tan(cam.fov*Math.PI/360));
     cam.position.set(0,0,dist*1.5); cam.lookAt(0,0,0); controls.update();
