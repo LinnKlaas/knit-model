@@ -10,7 +10,9 @@ export function initSweater(containerId) {
   const cam = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 0.1, 1000);
   const renderer = new THREE.WebGLRenderer({antialias:true});
   const containerEl = document.getElementById(containerId);
-  renderer.setSize(containerEl.clientWidth, containerEl.clientHeight);
+  renderer.setSize(containerEl.offsetWidth, containerEl.offsetHeight);
+  camera.aspect = containerEl.offsetWidth / containerEl.offsetHeight;
+  camera.updateProjectionMatrix();
   renderer.setClearColor(0xffffff);
   containerEl.appendChild(renderer.domElement);
 
