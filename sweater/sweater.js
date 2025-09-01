@@ -1,7 +1,3 @@
-// sweater.js
-// Main sweater 3D viewer logic using Three.js
-// Author: You :)
-
 import * as THREE from "https://esm.sh/three@0.160.0";
 import { GLTFLoader } from "https://esm.sh/three@0.160.0/examples/jsm/loaders/GLTFLoader.js";
 import { OrbitControls } from "https://esm.sh/three@0.160.0/examples/jsm/controls/OrbitControls.js";
@@ -78,7 +74,7 @@ export function initSweater(containerId) {
     "https://linnklaas.github.io/knit-model/sweater/scene.gltf",
     (gltf) => {
       const model = gltf.scene;
-      model.scale.set(0, 0, 0);
+      model.scale.set(1, 1, 1);
 
       // Materials
       bodyMaterial = new THREE.MeshStandardMaterial({
