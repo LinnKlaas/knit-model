@@ -51,7 +51,7 @@ export function initSweater(containerId) {
     if(extra){repivot(extra,"top"); extra.material=collarMat; const g=new THREE.Group(); g.add(extra); sweaterContainer.add(g); collarGroups.splice(1,0,g);}
 
     scene.add(sweaterContainer);
-    const box=new THREE.Box3().setFromObject(sweaterContainer);
+    const box = new THREE.Box3().setFromObject(sweaterContainer);
     const c = new THREE.Vector3();
     box.getCenter(c);
     sweaterContainer.position.sub(c);
