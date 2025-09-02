@@ -1,77 +1,68 @@
+// sweater.js
 import * as THREE from "https://esm.sh/three@0.160.0";
 import { GLTFLoader } from "https://esm.sh/three@0.160.0/examples/jsm/loaders/GLTFLoader.js";
 import { OrbitControls } from "https://esm.sh/three@0.160.0/examples/jsm/controls/OrbitControls.js";
 
 export function initSweater(containerId) {
-  const bodyGroups = [], sleeveGroups = [], collarGroups = [];
-  let bodyMat, sleeveMat, collarMat, sweaterContainer;
-
+  let body = [], slv = [], col = [], matB, matS, container, collarGroup;
   const scene = new THREE.Scene();
-  const cam = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 0.1, 1000);
-  const renderer = new THREE.WebGLRenderer({antialias:true});
-  const containerEl = document.getElementById(containerId);
-  renderer.setSize(containerEl.offsetWidth, containerEl.offsetHeight);
-  camera.aspect = containerEl.offsetWidth / containerEl.offsetHeight;
-  camera.updateProjectionMatrix();
-  renderer.setClearColor(0xffffff);
-  containerEl.appendChild(renderer.domElement);
+  const cam = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 1000);
+  const rend = new THREE.WebGLRenderer({ antialias: true });
+  rend.setSize(window.innerWidth - 250, window.innerHeight);
+  rend.setClearColor(0xffffff);
+  document.getElementById(containerId).appendChild(rend.domElement);
 
-  scene.add(new THREE.HemisphereLight(0xffffff,0x444444,1));
-  const dirLight = new THREE.DirectionalLight(0xffffff,1);
-  dirLight.position.set(5,10,7.5); scene.add(dirLight);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1));
+  const dl = new THREE.DirectionalLight(0xffffff, 1);
+  dl.position.set(5, 10, 7.5);
+  scene.add(dl);
 
-  const controls = new OrbitControls(cam, renderer.domElement);
-  const sleeveY=-37, collarY=-44.5;
+  const ctr = new OrbitControls(cam, rend.domElement);
+  const sleeveY = -33, collarY = -44.5;
+  const overallScale = 0.8, sleeveOffsetX = 4.2;
 
-  function repivot(mesh, align="top"){
-    mesh.geometry.computeBoundingBox();
-    const b=mesh.geometry.boundingBox, s=new THREE.Vector3();
-    if(align==="top") s.y=-b.max.y;
-    else if(align==="bottom") s.y=-b.min.y;
-    else s.y=-(b.min.y+b.max.y)/2;
-    mesh.geometry.translate(0,s.y,0);
-  }
+  const t = new THREE.TextureLoader(),
+        knit = t.load("https://raw.githubusercontent.com/LinnKlaas/knit-model/main/sweater/textures/patentmuster.png"),
+        knitN = t.load("https://raw.githubusercontent.com/LinnKlaas/knit-model/main/sweater/textures/Mat_0_normal.png");
+  [knit, knitN].forEach(tx => { tx.wrapS = tx.wrapT = THREE.RepeatWrapping; tx.repeat.set(20, 20); });
 
-  const loader = new THREE.TextureLoader();
-  const knitDiffuse = loader.load("https://raw.githubusercontent.com/LinnKlaas/knit-model/main/sweater/textures/patentmuster.png");
-  const knitNormal = loader.load("https://raw.githubusercontent.com/LinnKlaas/knit-model/main/sweater/textures/Mat_0_normal.png");
-  [knitDiffuse,knitNormal].forEach(t=>{t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(20,20);});
+  function rePivot(m,a="top"){ m.geometry.computeBoundingBox(); const b=m.geometry.boundingBox; const s=new THREE.Vector3();
+    s.y = a==="top"?-b.max.y:a==="bottom"?-b.min.y:-(b.min.y+b.max.y)/2; m.geometry.translate(0,s.y,0); }
 
-  new GLTFLoader().load("https://linnklaas.github.io/knit-model/sweater/scene.gltf",g=>{
-    const model=g.scene; model.scale.set(1,1,1);
-    bodyMat = new THREE.MeshStandardMaterial({map:knitDiffuse, normalMap:knitNormal, color:0xffffff, roughness:0.9, side:THREE.DoubleSide});
-    sleeveMat = new THREE.MeshStandardMaterial({map:knitDiffuse.clone(), normalMap:knitNormal, color:0xffffff, roughness:0.9, side:THREE.DoubleSide});
-    sleeveMat.map.center.set(0.5,0.5); sleeveMat.map.rotation=Math.PI/2;
-    collarMat = bodyMat;
+  new GLTFLoader().load("https://linnklaas.github.io/knit-model/sweater/scene.gltf", g => {
+    const m = g.scene; m.scale.set(1,1,1);
+    matB = new THREE.MeshStandardMaterial({ map: knit, normalMap: knitN, color: 0xffffff, roughness: .9, side: THREE.DoubleSide });
+    matS = new THREE.MeshStandardMaterial({ map: knit.clone(), normalMap: knitN, color: 0xffffff, roughness: .9, side: THREE.DoubleSide });
+    matS.map.center.set(.5,.5); matS.map.rotation = Math.PI/2;
+    const matC = matB; container = new THREE.Group(); collarGroup = new THREE.Group();
 
-    sweaterContainer = new THREE.Group();
+    [2,6].forEach(i=>{const p=m.getObjectByName(`Design_Piece_mat_${i}_Outside_Mat_0_0`); if(p){rePivot(p,"top"); p.material=matB; const g=new THREE.Group(); g.add(p); container.add(g); body.push(g);}});
+    [3,4].forEach((i,x)=>{const p=m.getObjectByName(`Design_Piece_mat_${i}_Outside_Mat_0_0`); if(p){p.geometry.computeBoundingBox(); const bb=p.geometry.boundingBox;
+      const shift = new THREE.Vector3(-(bb.min.x+bb.max.x)/2,-bb.max.y,0); p.geometry.translate(shift.x,shift.y,shift.z); p.material=matS;
+      const inner=new THREE.Group(); inner.add(p); const outer=new THREE.Group(); outer.add(inner); outer.userData={side:x?-1:1,inner}; container.add(outer); slv.push(outer); }});
+    [0,5].forEach(i=>{const p=m.getObjectByName(`Design_Piece_mat_${i}_Outside_Mat_0_0`); if(p){rePivot(p,"bottom"); p.material=matC; const g=new THREE.Group(); g.add(p); collarGroup.add(g); col.push(g);}});
+    const p1 = m.getObjectByName("Design_Piece_mat_1_Outside_Mat_0_0"); if(p1){rePivot(p1,"top"); p1.material=matC; const g=new THREE.Group(); g.add(p1); g.position.y+=15.7; collarGroup.add(g); col.splice(1,0,g); }
 
-    [2,6].forEach(id=>{const p=model.getObjectByName(`Design_Piece_mat_${id}_Outside_Mat_0_0`); if(p){repivot(p,"top"); p.material=bodyMat; const g=new THREE.Group(); g.add(p); sweaterContainer.add(g); bodyGroups.push(g);}});
-    [3,4].forEach((id,i)=>{const p=model.getObjectByName(`Design_Piece_mat_${id}_Outside_Mat_0_0`); if(p){repivot(p,"top"); p.material=sleeveMat; const g=new THREE.Group(); g.add(p); g.userData.side=i?-1:1; sweaterContainer.add(g); sleeveGroups.push(g);}});
-    [0,5].forEach(id=>{const p=model.getObjectByName(`Design_Piece_mat_${id}_Outside_Mat_0_0`); if(p){repivot(p,"bottom"); p.material=collarMat; const g=new THREE.Group(); g.add(p); sweaterContainer.add(g); collarGroups.push(g);}});
-    const extra=model.getObjectByName("Design_Piece_mat_1_Outside_Mat_0_0");
-    if(extra){repivot(extra,"top"); extra.material=collarMat; const g=new THREE.Group(); g.add(extra); sweaterContainer.add(g); collarGroups.splice(1,0,g);}
+    container.add(collarGroup); scene.add(container);
+    container.scale.set(overallScale,overallScale,overallScale);
 
-    scene.add(sweaterContainer);
-    const box = new THREE.Box3().setFromObject(sweaterContainer);
-    const c = new THREE.Vector3();
-    box.getCenter(c);
-    sweaterContainer.position.sub(c);
-    sweaterContainer.position.y += 11;
-    const size=box.getSize(new THREE.Vector3());
-    const dist=Math.max(size.x,size.y,size.z)/(2*Math.tan(cam.fov*Math.PI/360));
-    cam.position.set(0,0,dist*1.5); cam.lookAt(0,0,0); controls.update();
+    const boxAll=new THREE.Box3().setFromObject(container), cPtAll=boxAll.getCenter(new THREE.Vector3());
+    container.position.sub(cPtAll); container.position.y += 11;
+
+    const boxC=new THREE.Box3().setFromObject(collarGroup), cPtC=boxC.getCenter(new THREE.Vector3());
+    collarGroup.position.sub(cPtC); collarGroup.position.y+=-8.7;
+
+    const s=boxAll.getSize(new THREE.Vector3()), dist=Math.max(s.x,s.y,s.z)/(2*Math.tan(cam.fov*Math.PI/360));
+    cam.position.set(0,0,dist*1.5); cam.lookAt(0,0,0); ctr.update();
+
+    function upd(){
+      const bw=1, bh=1, sw=1, sh=1, cw=1, ch=1;
+      body.forEach(g=>g.scale.set(bw,bh,1));
+      let bb2=new THREE.Box3(); body.forEach(g=>bb2.union(new THREE.Box3().setFromObject(g)));
+      const top=bb2.max.y, bodyHalf=(bb2.max.x-bb2.min.x)/2;
+      slv.forEach(g=>{g.position.y=top+sleeveY; g.position.x=(bodyHalf+sleeveOffsetX)*g.userData.side; g.userData.inner.scale.set(sw,sh,1);});
+      if(collarGroup) collarGroup.scale.set(cw*bw,ch*bh,1);
+    }
+    (function anim(){ requestAnimationFrame(anim); upd(); ctr.update(); rend.render(scene,cam); })();
   });
-
-  function updateUI(){
-    const bw=+bodyW.value, bh=+bodyH.value, sw=+slvW.value, sh=+slvH.value, cw=+colW.value, ch=+colH.value;
-    bodyGroups.forEach(g=>g.scale.set(bw,bh,1));
-    let bbox=new THREE.Box3(); bodyGroups.forEach(g=>bbox.union(new THREE.Box3().setFromObject(g)));
-    const top=bbox.max.y, half=(bbox.max.x-bbox.min.x)/2-21.7;
-    sleeveGroups.forEach(g=>{g.scale.set(sw,sh,1); g.position.y=top+sleeveY; g.position.x=half*g.userData.side;});
-    collarGroups.forEach((g,i)=>{if(!g||!g.children.length)return; g.children[0].scale.set(cw*bw,ch*bh,1); if(!g.children[0].geometry.boundingBox) g.children[0].geometry.computeBoundingBox(); g.position.y=i===1?top-31.6+(g.children[0].geometry.boundingBox.max.y-g.children[0].geometry.boundingBox.min.y):top+collarY;});
-    if(bodyMat) bodyMat.color.set(color.value); if(sleeveMat) sleeveMat.color.set(color.value);
-  }
-
-  (function animate(){ requestAnimationFrame(animate); updateUI(); controls.update(); renderer.render(scene,cam); })();
 }
